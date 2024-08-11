@@ -1,32 +1,38 @@
-const net = require('net');
+const http = require('http');
 
-// Configuração do servidor
+// configuracao
 const SERVER_HOST = 'localhost';
-const SERVER_PORT = 8090;
+const SERVER_PORT = 8080;
 
-// Estabelecendo conexão
-const client = new net.Socket();
-client.connect(SERVER_PORT, SERVER_HOST, () => {
-    console.log('Conectado ao servidor');
+// dados para a req
+const postData = JSON.stringify({ message: 'interessante, nao?' });
 
-    // Enviando dados
-    client.write('interessante, nao?');
+// config http
+const options = {
+    hostname: SERVER_HOST,
+    port: SERVER_PORT,
+    path: '/send',
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData)
+    }
+};
+
+// req
+const req = http.request(options, (res) => {
+    console.log(`STATUS: ${res.statusCode}`);
+    res.setEncoding('utf8');
+    res.on('data', (chunk) => {
+        console.log(`Corpo: ${chunk}`);
+    });
 });
 
-// Lidando com dados recebidos do servidor
-client.on('data', (data) => {
-    console.log('Recebido: ' + data.toString());
-
-    // Fechando a conexão após receber a resposta
-    client.destroy();
+// error
+req.on('error', (e) => {
+    console.error(`Problema com a requisição: ${e.message}`);
 });
 
-// Lidando com fechamento da conexão
-client.on('close', () => {
-    console.log('Conexão fechada');
-});
-
-// Lidando com erros
-client.on('error', (err) => {
-    console.error('Erro: ' + err.message);
-});
+// dados da req
+req.write(postData);
+req.end();
