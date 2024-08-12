@@ -1,10 +1,10 @@
 const http = require('http');
 
-// dados para a req
+// configuracao
 const SERVER_HOST = 'localhost';
 const SERVER_PORT = 8080;
 
-// dados req
+// dados para a req
 const postData = JSON.stringify({ message: 'interessante, nao?' });
 
 // config http
@@ -19,31 +19,12 @@ const options = {
     }
 };
 
-// parse de respostas HTTP
-function parseHTTPResponse(response) {
-    const lines = response.split('\n');
-    const [version, statusCode, statusMessage] = lines[0].split(' ');
-    const headers = {};
-
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (line === '') break;
-        const [key, value] = line.split(': ');
-        headers[key] = value;
-    }
-
-    const body = lines.slice(lines.indexOf('') + 1).join('\n');
-    return { version, statusCode, statusMessage, headers, body };
-}
-
 // req
 const req = http.request(options, (res) => {
-    let rawData = '';
+    console.log(`STATUS: ${res.statusCode}`);
     res.setEncoding('utf8');
-    res.on('data', (chunk) => { rawData += chunk; });
-    res.on('end', () => {
-        const parsedResponse = parseHTTPResponse(`HTTP/${res.httpVersion} ${res.statusCode} ${res.statusMessage}\n${rawData}`);
-        console.log(parsedResponse);
+    res.on('data', (chunk) => {
+        console.log(`Corpo: ${chunk}`);
     });
 });
 
