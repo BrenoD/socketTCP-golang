@@ -6,13 +6,13 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"strings"
 )
 
-// Configuração do servidor
 const (
-	SERVER_HOST     = "localhost"
-	SERVER_PORT     = "8090"
-	SERVER_TYPE     = "tcp"
+	SERVER_HOST      = "localhost"
+	SERVER_PORT      = "8090"
+	SERVER_TYPE      = "tcp"
 	HTTP_SERVER_PORT = "8080"
 )
 
@@ -21,22 +21,17 @@ type Message struct {
 }
 
 func main() {
-	// Iniciando o servidor HTTP em uma nova goroutine
 	go startHTTPServer()
 
-	// Configurando o servidor TCP
 	listener, err := net.Listen(SERVER_TYPE, SERVER_HOST+":"+SERVER_PORT)
 	if err != nil {
 		panic(err)
 	}
 	defer listener.Close()
 
-	fmt.Println("Servidor TCP ouvindo em", SERVER_HOST+":"+SERVER_PORT)
-
 	for {
 		connection, err := listener.Accept()
 		if err != nil {
-			fmt.Println("Erro ao aceitar conexão:", err)
 			continue
 		}
 
@@ -46,36 +41,18 @@ func main() {
 
 func startHTTPServer() {
 	http.HandleFunc("/send", handleHTTP)
-	fmt.Println("Servidor HTTP ouvindo em localhost:" + HTTP_SERVER_PORT)
-	if err := http.ListenAndServe(":"+HTTP_SERVER_PORT, nil); err != nil {
-		fmt.Println("Erro ao iniciar o servidor HTTP:", err)
-	}
+	http.ListenAndServe(":"+HTTP_SERVER_PORT, nil)
 }
 
 func handleHTTP(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Erro ao ler o corpo da requisição", http.StatusBadRequest)
-		return
-	}
+	body, _ := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 
-	// parse do JSON
 	var msg Message
-	err = json.Unmarshal(body, &msg)
-	if err != nil {
-		http.Error(w, "Erro ao fazer parse do JSON", http.StatusBadRequest)
-		return
-	}
+	json.Unmarshal(body, &msg)
 
-	// mensagem para o servidor TCP
-	response, err := sendToTCPServer(msg.Message)
-	if err != nil {
-		http.Error(w, "Erro ao enviar dados para o servidor TCP", http.StatusInternalServerError)
-		return
-	}
+	response, _ := sendToTCPServer(msg.Message)
 
-	// respondendo de volta ao cliente HTTP
 	w.Write([]byte(response))
 }
 
@@ -86,16 +63,10 @@ func sendToTCPServer(message string) (string, error) {
 	}
 	defer conn.Close()
 
-	_, err = conn.Write([]byte(message))
-	if err != nil {
-		return "", err
-	}
+	conn.Write([]byte(message))
 
 	buffer := make([]byte, 1024)
-	mLen, err := conn.Read(buffer)
-	if err != nil {
-		return "", err
-	}
+	mLen, _ := conn.Read(buffer)
 
 	return string(buffer[:mLen]), nil
 }
@@ -104,17 +75,39 @@ func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	buffer := make([]byte, 1024)
-	mLen, err := conn.Read(buffer)
-	if err != nil {
-		fmt.Println("Erro ao ler dados:", err)
-		return
-	}
+	mLen, _ := conn.Read(buffer)
 
-	fmt.Println("Recebido:", string(buffer[:mLen]))
+	response := "Mensagem recebida via TCP"
 
-	// resposta de volta ao cliente
-	_, err = conn.Write([]byte("Mensagem recebida via TCP"))
-	if err != nil {
-		fmt.Println("Erro ao enviar dados:", err)
+	// Parse da requisição HTTP
+	parseHTTPRequest(string(buffer[:mLen]))
+
+	conn.Write([]byte(response))
+}
+
+func parseHTTPRequest(request string) {
+	lines := strings.Split(request, "\n")
+	method, path, version := parseRequestLine(lines[0])
+	headers := parseHeaders(lines[1:])
+	fmt.Println("Método:", method)
+	fmt.Println("Caminho:", path)
+	fmt.Println("Versão HTTP:", version)
+	fmt.Println("Cabeçalhos:", headers)
+}
+
+func parseRequestLine(line string) (string, string, string) {
+	parts := strings.Split(line, " ")
+	return parts[0], parts[1], parts[2]
+}
+
+func parseHeaders(lines []string) map[string]string {
+	headers := make(map[string]string)
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			break
+		}
+		parts := strings.SplitN(line, ": ", 2)
+		headers[parts[0]] = parts[1]
 	}
+	return headers
 }
