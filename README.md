@@ -45,6 +45,9 @@ Experiment with multiple clients connecting simultaneously.
 # 🤝 Contributing
 
 Feel free to submit pull requests or open issues to improve the project!
+
+
+ps: They have not yet completed it.
 <br />
 ## License 📜<br />
 This project is licensed under the MIT License. See the LICENSE file for details.<br />
